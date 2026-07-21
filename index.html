@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor El Niño | SST Pacífico Sur</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--bg:#08111f;--panel:#101a2b;--line:#2b3b55;--txt:#eef5ff;--mut:#abc0db;--acc:#61d4ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font-family:Arial,system-ui,sans-serif}header{height:70px;padding:12px 18px;background:#0f1b2f;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:19px;margin:0}.sub{font-size:13px;color:var(--mut);margin-top:4px}#app{display:grid;grid-template-columns:390px 1fr;height:calc(100vh - 70px)}aside{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:14px}.card{background:#0b1424;border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:13px}h2{font-size:15px;margin:0 0 10px}.hint,.small{color:var(--mut);font-size:12.5px;line-height:1.45}.small{font-size:11.5px}label{display:block;font-size:12px;margin:8px 0 5px;color:#d7e8ff}select,input,button{width:100%;padding:10px;border-radius:10px;border:1px solid #365071;background:#091324;color:var(--txt);font-size:14px}button{cursor:pointer;background:#142640}button:hover{border-color:var(--acc)}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.status{padding:9px;margin-top:9px;border-radius:10px;border:1px solid #33506e;background:#081120;color:#d6e8ff;font-size:12.5px}#map{width:100%;height:100%;background:#07101e}.legend{position:absolute;z-index:700;right:18px;bottom:20px;background:rgba(8,17,31,.94);border:1px solid var(--line);border-radius:12px;padding:12px;width:260px}.bar{height:13px;border-radius:999px;margin:8px 0;background:linear-gradient(90deg,#123c9c,#3ba0ff,#fff,#ffb14a,#d7191c)}.scale{display:flex;justify-content:space-between;font-size:11.5px;color:#dceaff}.pill{display:inline-block;border:1px solid var(--line);padding:5px 8px;border-radius:999px;font-size:12px;margin:3px;background:#091324}a{color:#8bdcff}.leaflet-control-attribution{background:rgba(255,255,255,.8)!important}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#0b1424;color:#eef5ff}@media(max-width:900px){#app{grid-template-columns:1fr;height:auto}#map{height:72vh}header{height:auto;display:block}}
+</style>
+</head>
+<body>
+<header><div><h1>Visor del incremento de temperatura del mar | Pacífico de América del Sur</h1><div class="sub">NOAA Coral Reef Watch / PacIOOS THREDDS-WMS + ERDDAP · Región Niño 1+2</div></div><div class="small">Capa principal: anomalía de TSM/SSTA</div></header>
+<div id="app"><aside>
+<div class="card"><h2>1. Variable</h2><label>Producto</label><select id="variable"><option value="CRW_SSTANOMALY" selected>Anomalía de TSM / SSTA (°C)</option><option value="CRW_SST">Temperatura superficial del mar / TSM (°C)</option><option value="CRW_HOTSPOT">HotSpot (°C)</option><option value="CRW_DHW">Degree Heating Week / DHW</option><option value="CRW_BAA_7D_MAX">Alerta blanqueamiento 7 días</option></select><div class="status" id="status">Cargando WMS...</div></div>
+<div class="card"><h2>2. Evolución temporal</h2><div class="grid2"><button id="ptoday">🌎 Condición actual</button><button id="p2023">El Niño 2023–24</button></div><div class="grid2" style="margin-top:8px"><button id="play">▶ Animar</button><button id="stop">■ Detener</button></div><label>Velocidad de animación: <span id="speedLabel">1.5 s por imagen</span></label><input type="range" id="speed" min="300" max="3000" step="100" value="1500"><div class="small" style="display:flex;justify-content:space-between;margin-top:3px"><span>Más rápido</span><span>Más lento</span></div><label>Imágenes por mes (densidad de animación)</label><select id="density"><option value="1">1 por mes (cada ~30 días)</option><option value="2">2 por mes (cada ~15 días)</option><option value="3" selected>3 por mes (cada ~10 días)</option></select><label>Rango de animación</label><div class="grid2"><input type="date" id="start" value="2026-01-01"><input type="date" id="end" value="2026-07-21"></div><div class="status" id="currentDate">Fecha visualizada: 2026-07-21</div><p class="hint">Para El Niño use SSTA. Valores positivos, especialmente mayores a +1 °C, indican calentamiento respecto a la climatología. Por defecto el visor carga la condición más reciente disponible (hoy).</p></div>
+<div class="card"><h2>3. Regiones</h2><button id="nino12">Enfocar Región Niño 1+2</button><button id="sa" style="margin-top:8px">Enfocar Pacífico sudamericano</button><div style="margin-top:10px"><span class="pill">Niño 1+2: 0–10°S, 90–80°W</span><span class="pill">Ecuador–Perú–Chile</span></div></div>
+<div class="card"><h2>4. Diagnóstico rápido</h2><p class="hint">Si no ves colores, normalmente es por bloqueo de red al servidor de mapas. Prueba abrir el enlace de diagnóstico: si aparece una imagen PNG, el servidor responde.</p><button id="diag">Abrir tile WMS de prueba</button><div id="diaglink" class="small" style="margin-top:8px"></div></div>
+<div class="card"><h2>5. Consulta por punto</h2><p class="hint">Haz clic en el océano para consultar el valor aproximado del píxel mediante ERDDAP.</p><div id="pointInfo" class="status">Sin punto seleccionado.</div></div>
+<div class="card"><h2>Fuente</h2><p class="hint">NOAA Coral Reef Watch, PacIOOS THREDDS/WMS y ERDDAP. OpenStreetMap como mapa base.</p></div>
+</aside><main style="position:relative"><div id="map"></div><div class="legend" id="legend"></div></main></div>
+<script>
+const WMS='https://pae-paha.pacioos.hawaii.edu/thredds/wms/dhw_5km';
+const ERDDAP='https://pae-paha.pacioos.hawaii.edu/erddap/griddap/dhw_5km';
+const bboxSA=[[-55,-115],[8,-65]], bboxNino=[[-10,-90],[0,-80]];
+let wmsLayer=null, anim=null, currentDate="2026-07-21", fallbackTries=0, animRunning=false;
+const map=L.map('map',{preferCanvas:true}).setView([-16,-83],4);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:10,attribution:'© OpenStreetMap'}).addTo(map);
+L.rectangle(bboxSA,{color:'#61d4ff',weight:1,fill:false,dashArray:'4,6'}).addTo(map).bindTooltip('Pacífico sudamericano');
+L.rectangle(bboxNino,{color:'#ffdf5b',weight:2,fill:false,dashArray:'6,5'}).addTo(map).bindTooltip('Región Niño 1+2');
+const meta={
+CRW_SSTANOMALY:{name:'Anomalía de TSM',unit:'°C',range:'-5,5',style:'boxfill/redblue',leg:['-5','0','+5 °C'],desc:'positivo = mar más cálido que el promedio',bar:'linear-gradient(90deg,#08306b,#4292c6,#fff,#fdae61,#a50026)'},
+CRW_SST:{name:'Temperatura superficial del mar',unit:'°C',range:'0,34',style:'boxfill/sst_36',leg:['0','17','34 °C'],desc:'temperatura absoluta superficial',bar:'linear-gradient(90deg,#253494,#2c7fb8,#41b6c4,#ffffbf,#fdae61,#d7191c)'},
+CRW_HOTSPOT:{name:'HotSpot',unit:'°C',range:'0,5',style:'boxfill/rainbow',leg:['0','2.5','5 °C'],desc:'estrés térmico sobre umbral de blanqueamiento',bar:'linear-gradient(90deg,#ffffcc,#fd8d3c,#bd0026)'},
+CRW_DHW:{name:'DHW',unit:'°C-semanas',range:'0,16',style:'boxfill/rainbow',leg:['0','8','16'],desc:'acumulación de estrés térmico',bar:'linear-gradient(90deg,#ffffcc,#fd8d3c,#800026)'},
+CRW_BAA_7D_MAX:{name:'Alerta de blanqueamiento 7 días',unit:'nivel',range:'0,4',style:'boxfill/rainbow',leg:['0','2','4'],desc:'nivel máximo de alerta en 7 días',bar:'linear-gradient(90deg,#2c7bb6,#ffffbf,#d7191c)'}
+};
+function timeStr(){return currentDate+'T12:00:00.000Z'}
+function setStatus(t){document.getElementById('status').textContent=t}
+function legend(){const v=document.getElementById('variable').value,m=meta[v];document.getElementById('legend').innerHTML=`<b>${m.name}</b><div class="bar" style="background:${m.bar}"></div><div class="scale"><span>${m.leg[0]}</span><span>${m.leg[1]}</span><span>${m.leg[2]}</span></div><div class="small">${m.desc}</div>`}
+function loadLayer(cb){
+  const v=document.getElementById('variable').value, m=meta[v], reqDate=currentDate;
+  const newLayer=L.tileLayer.wms(WMS,{layers:v,styles:m.style,format:'image/png',transparent:true,version:'1.1.1',time:timeStr(),COLORSCALERANGE:m.range,NUMCOLORBANDS:250,LOGSCALE:false,opacity:.78,attribution:'NOAA CRW / PacIOOS'});
+  let settled=false;
+  const hardTimeout=setTimeout(()=>{ if(settled)return; settled=true; map.removeLayer(newLayer); setStatus(`Tiempo de espera agotado para ${reqDate}.`); if(cb)cb(false); },9000);
+  setStatus(`Cargando ${m.name} · ${reqDate}...`);
+  newLayer.on('load',()=>{
+    if(settled)return; settled=true; clearTimeout(hardTimeout);
+    if(wmsLayer) map.removeLayer(wmsLayer);
+    wmsLayer=newLayer;
+    if(reqDate===todayISO()) fallbackTries=0;
+    setStatus(`Capa activa: ${m.name} · ${reqDate}`);
+    document.getElementById('currentDate').textContent='Fecha visualizada: '+reqDate;
+    if(cb)cb(true);
+  });
+  newLayer.on('tileerror',()=>{
+    if(settled)return;
+    if(reqDate===todayISO() && fallbackTries<3){
+      settled=true; clearTimeout(hardTimeout); map.removeLayer(newLayer); fallbackTries++;
+      const prev=new Date(currentDate+'T12:00:00Z'); prev.setUTCDate(prev.getUTCDate()-1); currentDate=prev.toISOString().slice(0,10);
+      setStatus(`Sin datos aún para ${reqDate}, probando ${currentDate}...`);
+      loadLayer(cb);
+    } else {
+      settled=true; clearTimeout(hardTimeout); map.removeLayer(newLayer);
+      setStatus(`Error cargando WMS para ${reqDate}. Revise conexión o pruebe otra fecha.`);
+      if(cb)cb(false);
+    }
+  });
+  newLayer.addTo(map);
+  legend();
+  document.getElementById('currentDate').textContent='Fecha visualizada: '+reqDate;
+  makeDiag();
+}
+function resetToStart(){animRunning=false;clearTimeout(anim);clearInterval(anim);anim=null;currentDate=document.getElementById('start').value;loadLayer()}
+function addMonths(s,n){let d=new Date(s+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+n);return d.toISOString().slice(0,10)}
+function addDays(s,n){let d=new Date(s+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function getStepDays(){const f=parseInt(document.getElementById('density').value,10);return Math.max(1,Math.round(30/f))}
+function getSpeed(){return parseInt(document.getElementById('speed').value,10)}
+function updateSpeedLabel(){document.getElementById('speedLabel').textContent=(getSpeed()/1000).toFixed(1)+' s por imagen'}
+function stepAnim(end){
+  if(!animRunning) return;
+  const t0=Date.now();
+  loadLayer(()=>{
+    if(!animRunning) return;
+    const elapsed=Date.now()-t0, wait=Math.max(0,getSpeed()-elapsed);
+    const next=addDays(currentDate,getStepDays());
+    if(next>end){ setStatus('Animación finalizada.'); animRunning=false; anim=null; return; }
+    anim=setTimeout(()=>{ currentDate=next; stepAnim(end); }, wait);
+  });
+}
+function play(){
+  clearTimeout(anim); clearInterval(anim); anim=null;
+  const start=document.getElementById('start').value, end=document.getElementById('end').value;
+  currentDate=start;
+  animRunning=true;
+  stepAnim(end);
+}
+function makeDiag(){const v=document.getElementById('variable').value,m=meta[v],t=encodeURIComponent(timeStr()); const url=`${WMS}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${v}&STYLES=${encodeURIComponent(m.style)}&FORMAT=image/png&TRANSPARENT=true&SRS=EPSG:4326&BBOX=-95,-20,-70,5&WIDTH=700&HEIGHT=700&TIME=${t}&COLORSCALERANGE=${encodeURIComponent(m.range)}&NUMCOLORBANDS=250`; document.getElementById('diaglink').innerHTML=`<a href="${url}" target="_blank">Ver PNG WMS de prueba</a>`; return url;}
+document.getElementById('diag').onclick=()=>window.open(makeDiag(),'_blank');
+async function fetchValue(v,date,lat,lon){const url=`${ERDDAP}.csvp?${v}[(${date})][(${lat})][(${lon})]`;const r=await fetch(url);const txt=await r.text();const a=txt.trim().split(/\n/);if(a.length<3)return null;const val=parseFloat(a[2].split(',').pop());return Number.isFinite(val)?val:null}
+function latGrid(lat){return +(Math.round((lat-(-89.975))/.05)*.05-89.975).toFixed(3)}function lonGrid(lon){return +(Math.round((lon-(-179.975))/.05)*.05-179.975).toFixed(3)}
+map.on('click',async e=>{const v=document.getElementById('variable').value,lat=latGrid(e.latlng.lat),lon=lonGrid(e.latlng.lng),m=meta[v]; if(lat<-55||lat>8||lon<-115||lon>-65)return; document.getElementById('pointInfo').textContent=`Consultando lat ${lat}, lon ${lon}...`; try{const val=await fetchValue(v,timeStr().replace('.000',''),lat,lon);const txt=val==null?'Sin dato':val.toFixed(2)+' '+m.unit;L.popup().setLatLng(e.latlng).setContent(`<b>${m.name}</b><br>${currentDate}<br>Lat ${lat}, Lon ${lon}<br><b>${txt}</b>`).openOn(map);document.getElementById('pointInfo').textContent=`Punto: lat ${lat}, lon ${lon}. Valor: ${txt}`;}catch(err){document.getElementById('pointInfo').textContent='No fue posible consultar el punto.'}});
+document.getElementById('variable').onchange=loadLayer;document.getElementById('start').onchange=resetToStart;document.getElementById('end').onchange=resetToStart;document.getElementById('play').onclick=play;document.getElementById('stop').onclick=()=>{animRunning=false;clearTimeout(anim);clearInterval(anim);anim=null;setStatus('Animación detenida.');};document.getElementById('speed').oninput=()=>{updateSpeedLabel();};document.getElementById('density').onchange=()=>{ if(animRunning) play(); };document.getElementById('nino12').onclick=()=>map.fitBounds(bboxNino);document.getElementById('sa').onclick=()=>map.fitBounds(bboxSA);function todayISO(){return new Date().toISOString().slice(0,10)}
+document.getElementById('ptoday').onclick=()=>{const t=todayISO();const s=addMonths(t,-6);document.getElementById('start').value=s;document.getElementById('end').value=t;currentDate=t;document.getElementById('variable').value='CRW_SSTANOMALY';loadLayer()};document.getElementById('p2023').onclick=()=>{document.getElementById('start').value='2023-01-01';document.getElementById('end').value='2024-06-01';currentDate='2023-01-01';document.getElementById('variable').value='CRW_SSTANOMALY';loadLayer()};
+updateSpeedLabel();map.fitBounds(bboxSA);loadLayer();
+</script>
+</body></html>
