@@ -14,7 +14,7 @@
 <header><div><h1>Visor del incremento de temperatura del mar | Pacífico de América del Sur</h1><div class="sub">NOAA Coral Reef Watch / PacIOOS THREDDS-WMS + ERDDAP · Región Niño 1+2</div></div><div class="small">Capa principal: anomalía de TSM/SSTA</div></header>
 <div id="app"><aside>
 <div class="card"><h2>1. Variable</h2><label>Producto</label><select id="variable"><option value="CRW_SSTANOMALY" selected>Anomalía de TSM / SSTA (°C)</option><option value="CRW_SST">Temperatura superficial del mar / TSM (°C)</option><option value="CRW_HOTSPOT">HotSpot (°C)</option><option value="CRW_DHW">Degree Heating Week / DHW</option><option value="CRW_BAA_7D_MAX">Alerta blanqueamiento 7 días</option></select><div class="status" id="status">Cargando WMS...</div></div>
-<div class="card"><h2>2. Evolución temporal</h2><div class="grid2"><button id="ptoday">🌎 Condición actual</button><button id="p2023">El Niño 2023–24</button></div><div class="grid2" style="margin-top:8px"><button id="play">▶ Animar</button><button id="stop">■ Detener</button></div><label>Velocidad de animación: <span id="speedLabel">1.5 s por imagen</span></label><input type="range" id="speed" min="300" max="3000" step="100" value="1500"><div class="small" style="display:flex;justify-content:space-between;margin-top:3px"><span>Más rápido</span><span>Más lento</span></div><label>Imágenes por mes (densidad de animación)</label><select id="density"><option value="1">1 por mes (cada ~30 días)</option><option value="2">2 por mes (cada ~15 días)</option><option value="3" selected>3 por mes (cada ~10 días)</option></select><label>Rango de animación</label><div class="grid2"><input type="date" id="start" value="2026-01-01"><input type="date" id="end" value="2026-07-21"></div><div class="status" id="currentDate">Fecha visualizada: 2026-07-21</div><p class="hint">Para El Niño use SSTA. Valores positivos, especialmente mayores a +1 °C, indican calentamiento respecto a la climatología. Por defecto el visor carga la condición más reciente disponible (hoy).</p></div>
+<div class="card"><h2>2. Evolución temporal</h2><div class="grid2"><button id="ptoday">🌎 Condición actual</button><button id="p2023">El Niño 2023–24</button></div><div class="grid2" style="margin-top:8px"><button id="play">▶ Animar</button><button id="stop">■ Detener</button></div><label>Velocidad de animación: <span id="speedLabel">1.5 s por imagen</span></label><input type="range" id="speed" min="300" max="3000" step="100" value="1500"><div class="small" style="display:flex;justify-content:space-between;margin-top:3px"><span>Más rápido</span><span>Más lento</span></div><label>Imágenes por mes (densidad de animación)</label><select id="density"><option value="1">1 por mes (cada ~30 días)</option><option value="2">2 por mes (cada ~15 días)</option><option value="3" selected>3 por mes (cada ~10 días)</option></select><label>Rango de animación</label><div class="grid2"><input type="date" id="start"><input type="date" id="end"></div><div class="status" id="currentDate">Fecha visualizada: calculando...</div><p class="hint">Para El Niño use SSTA. Valores positivos, especialmente mayores a +1 °C, indican calentamiento respecto a la climatología. Por defecto el visor carga la condición más reciente disponible (hoy).</p></div>
 <div class="card"><h2>3. Regiones</h2><button id="nino12">Enfocar Región Niño 1+2</button><button id="sa" style="margin-top:8px">Enfocar Pacífico sudamericano</button><div style="margin-top:10px"><span class="pill">Niño 1+2: 0–10°S, 90–80°W</span><span class="pill">Ecuador–Perú–Chile</span></div></div>
 <div class="card"><h2>4. Diagnóstico rápido</h2><p class="hint">Si no ves colores, normalmente es por bloqueo de red al servidor de mapas. Prueba abrir el enlace de diagnóstico: si aparece una imagen PNG, el servidor responde.</p><button id="diag">Abrir tile WMS de prueba</button><div id="diaglink" class="small" style="margin-top:8px"></div></div>
 <div class="card"><h2>5. Consulta por punto</h2><p class="hint">Haz clic en el océano para consultar el valor aproximado del píxel mediante ERDDAP.</p><div id="pointInfo" class="status">Sin punto seleccionado.</div></div>
@@ -24,7 +24,7 @@
 const WMS='https://pae-paha.pacioos.hawaii.edu/thredds/wms/dhw_5km';
 const ERDDAP='https://pae-paha.pacioos.hawaii.edu/erddap/griddap/dhw_5km';
 const bboxSA=[[-55,-115],[8,-65]], bboxNino=[[-10,-90],[0,-80]];
-let wmsLayer=null, anim=null, currentDate="2026-07-21", fallbackTries=0, animRunning=false;
+let wmsLayer=null, anim=null, currentDate=null, fallbackTries=0, animRunning=false;
 const map=L.map('map',{preferCanvas:true}).setView([-16,-83],4);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:10,attribution:'© OpenStreetMap'}).addTo(map);
 L.rectangle(bboxSA,{color:'#61d4ff',weight:1,fill:false,dashArray:'4,6'}).addTo(map).bindTooltip('Pacífico sudamericano');
@@ -36,6 +36,8 @@ CRW_HOTSPOT:{name:'HotSpot',unit:'°C',range:'0,5',style:'boxfill/rainbow',leg:[
 CRW_DHW:{name:'DHW',unit:'°C-semanas',range:'0,16',style:'boxfill/rainbow',leg:['0','8','16'],desc:'acumulación de estrés térmico',bar:'linear-gradient(90deg,#ffffcc,#fd8d3c,#800026)'},
 CRW_BAA_7D_MAX:{name:'Alerta de blanqueamiento 7 días',unit:'nivel',range:'0,4',style:'boxfill/rainbow',leg:['0','2','4'],desc:'nivel máximo de alerta en 7 días',bar:'linear-gradient(90deg,#2c7bb6,#ffffbf,#d7191c)'}
 };
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function isRecentDate(d){const diffDays=Math.round((new Date(todayISO()+'T00:00:00Z')-new Date(d+'T00:00:00Z'))/86400000);return diffDays>=0&&diffDays<=5}
 function timeStr(){return currentDate+'T12:00:00.000Z'}
 function setStatus(t){document.getElementById('status').textContent=t}
 function legend(){const v=document.getElementById('variable').value,m=meta[v];document.getElementById('legend').innerHTML=`<b>${m.name}</b><div class="bar" style="background:${m.bar}"></div><div class="scale"><span>${m.leg[0]}</span><span>${m.leg[1]}</span><span>${m.leg[2]}</span></div><div class="small">${m.desc}</div>`}
@@ -43,7 +45,7 @@ function loadLayer(cb){
   const v=document.getElementById('variable').value, m=meta[v], reqDate=currentDate;
   const newLayer=L.tileLayer.wms(WMS,{layers:v,styles:m.style,format:'image/png',transparent:true,version:'1.1.1',time:timeStr(),COLORSCALERANGE:m.range,NUMCOLORBANDS:250,LOGSCALE:false,opacity:.78,attribution:'NOAA CRW / PacIOOS'});
   let settled=false;
-  const hardTimeout=setTimeout(()=>{ if(settled)return; settled=true; map.removeLayer(newLayer); setStatus(`Tiempo de espera agotado para ${reqDate}.`); if(cb)cb(false); },9000);
+  const hardTimeout=setTimeout(()=>{ if(settled)return; settled=true; map.removeLayer(newLayer); setStatus(`Tiempo de espera agotado para ${reqDate}. El servidor WMS de PacIOOS está respondiendo lento o no responde ahora mismo; reintente en unos segundos.`); if(cb)cb(false); },18000);
   setStatus(`Cargando ${m.name} · ${reqDate}...`);
   newLayer.on('load',()=>{
     if(settled)return; settled=true; clearTimeout(hardTimeout);
@@ -56,14 +58,14 @@ function loadLayer(cb){
   });
   newLayer.on('tileerror',()=>{
     if(settled)return;
-    if(reqDate===todayISO() && fallbackTries<3){
+    if(isRecentDate(reqDate) && fallbackTries<5){
       settled=true; clearTimeout(hardTimeout); map.removeLayer(newLayer); fallbackTries++;
       const prev=new Date(currentDate+'T12:00:00Z'); prev.setUTCDate(prev.getUTCDate()-1); currentDate=prev.toISOString().slice(0,10);
-      setStatus(`Sin datos aún para ${reqDate}, probando ${currentDate}...`);
+      setStatus(`Sin datos aún para ${reqDate} (posible retraso de publicación de NOAA/PacIOOS), probando ${currentDate}...`);
       loadLayer(cb);
     } else {
       settled=true; clearTimeout(hardTimeout); map.removeLayer(newLayer);
-      setStatus(`Error cargando WMS para ${reqDate}. Revise conexión o pruebe otra fecha.`);
+      setStatus(`Error cargando WMS para ${reqDate}. Puede ser una fecha sin datos, una variable/estilo no soportado por el servidor, o el servidor de PacIOOS con problemas. Pruebe "Abrir tile WMS de prueba" para diagnosticar.`);
       if(cb)cb(false);
     }
   });
@@ -101,8 +103,14 @@ document.getElementById('diag').onclick=()=>window.open(makeDiag(),'_blank');
 async function fetchValue(v,date,lat,lon){const url=`${ERDDAP}.csvp?${v}[(${date})][(${lat})][(${lon})]`;const r=await fetch(url);const txt=await r.text();const a=txt.trim().split(/\n/);if(a.length<3)return null;const val=parseFloat(a[2].split(',').pop());return Number.isFinite(val)?val:null}
 function latGrid(lat){return +(Math.round((lat-(-89.975))/.05)*.05-89.975).toFixed(3)}function lonGrid(lon){return +(Math.round((lon-(-179.975))/.05)*.05-179.975).toFixed(3)}
 map.on('click',async e=>{const v=document.getElementById('variable').value,lat=latGrid(e.latlng.lat),lon=lonGrid(e.latlng.lng),m=meta[v]; if(lat<-55||lat>8||lon<-115||lon>-65)return; document.getElementById('pointInfo').textContent=`Consultando lat ${lat}, lon ${lon}...`; try{const val=await fetchValue(v,timeStr().replace('.000',''),lat,lon);const txt=val==null?'Sin dato':val.toFixed(2)+' '+m.unit;L.popup().setLatLng(e.latlng).setContent(`<b>${m.name}</b><br>${currentDate}<br>Lat ${lat}, Lon ${lon}<br><b>${txt}</b>`).openOn(map);document.getElementById('pointInfo').textContent=`Punto: lat ${lat}, lon ${lon}. Valor: ${txt}`;}catch(err){document.getElementById('pointInfo').textContent='No fue posible consultar el punto.'}});
-document.getElementById('variable').onchange=loadLayer;document.getElementById('start').onchange=resetToStart;document.getElementById('end').onchange=resetToStart;document.getElementById('play').onclick=play;document.getElementById('stop').onclick=()=>{animRunning=false;clearTimeout(anim);clearInterval(anim);anim=null;setStatus('Animación detenida.');};document.getElementById('speed').oninput=()=>{updateSpeedLabel();};document.getElementById('density').onchange=()=>{ if(animRunning) play(); };document.getElementById('nino12').onclick=()=>map.fitBounds(bboxNino);document.getElementById('sa').onclick=()=>map.fitBounds(bboxSA);function todayISO(){return new Date().toISOString().slice(0,10)}
+document.getElementById('variable').onchange=loadLayer;document.getElementById('start').onchange=resetToStart;document.getElementById('end').onchange=resetToStart;document.getElementById('play').onclick=play;document.getElementById('stop').onclick=()=>{animRunning=false;clearTimeout(anim);clearInterval(anim);anim=null;setStatus('Animación detenida.');};document.getElementById('speed').oninput=()=>{updateSpeedLabel();};document.getElementById('density').onchange=()=>{ if(animRunning) play(); };document.getElementById('nino12').onclick=()=>map.fitBounds(bboxNino);document.getElementById('sa').onclick=()=>map.fitBounds(bboxSA);
 document.getElementById('ptoday').onclick=()=>{const t=todayISO();const s=addMonths(t,-6);document.getElementById('start').value=s;document.getElementById('end').value=t;currentDate=t;document.getElementById('variable').value='CRW_SSTANOMALY';loadLayer()};document.getElementById('p2023').onclick=()=>{document.getElementById('start').value='2023-01-01';document.getElementById('end').value='2024-06-01';currentDate='2023-01-01';document.getElementById('variable').value='CRW_SSTANOMALY';loadLayer()};
+(function initDefaultDates(){
+  const t=todayISO();
+  document.getElementById('end').value=t;
+  document.getElementById('start').value=addMonths(t,-6);
+  currentDate=t;
+})();
 updateSpeedLabel();map.fitBounds(bboxSA);loadLayer();
 </script>
 </body></html>
